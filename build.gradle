@@ -1,0 +1,113 @@
+plugins {
+    id "dev.architectury.loom" version "0.12.0.9999"
+}
+
+version = "${mod_version}"
+group = "${maven_group}"
+archivesBaseName = "${archives_base_name}"
+
+sourceCompatibility = targetCompatibility = compileJava.sourceCompatibility = compileJava.targetCompatibility = '1.8' // Need this here so eclipse task generates correctly.
+
+loom {
+//    setIntermediaryUrl("https://maven.legacyfabric.net/net/fabricmc/intermediary-old/${minecraft_version}/intermediary-old-${minecraft_version}-v2.jar")
+    setIntermediaryUrl("https://maven.legacyfabric.net/net/fabricmc/intermediary/${minecraft_version}/intermediary-${minecraft_version}-v2.jar")
+//    customMinecraftManifest.set("https://meta.legacyfabric.net/v2/manifest/${minecraft_version}")
+
+    // since loom 0.10, you are **required** to use the
+    // "forge" block to configure forge-specific features,
+    // such as the mixinConfigs array or datagen
+    forge {
+        // specify the mixin configs used in this mod
+        // this will be added to the jar manifest as well!
+//        mixinConfigs = [
+//                "examplemod.mixins.json"
+//        ]
+
+        // missing access transformers?
+        // don't worry, you can still use them!
+        // note that your AT *MUST* be located at
+        // src/main/resources/META-INF/accesstransformer.cfg
+        // to work as there is currently no config option to change this.
+        // also, any names used in your access transformer will need to be
+        // in SRG mapped ("func_" / "field_" with MCP class names) to work!
+        // (both of these things may be subject to change in the future)
+
+        // this will create a data generator configuration
+        // that you can use to automatically generate assets and data
+        // using architectury loom. Note that this currently *only* works
+        // for forge projects made with architectury loom!
+        dataGen {
+            mod project.mod_id
+        }
+    }
+
+    // This allows you to modify your launch configurations,
+    // for example to add custom arguments. In this case, we want
+    // the data generator to check our resources directory for
+    // existing files. (see Forge's ExistingFileHelper for more info)
+    launches {
+        data {
+            arg "--existing", file("src/main/resources").absolutePath
+        }
+    }
+}
+
+dependencies {
+    // to change the versions see the gradle.properties file
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+
+    // choose what mappings you want to use here
+    mappings "de.oceanlabs.mcp:mcp_stable:39-1.12@zip"
+
+    // your forge dependency, this is **required** when using Forge Loom in forge mode!
+    forge "net.minecraftforge:forge:${project.minecraft_version}-${project.forge_version}"
+}
+
+
+processResources {
+    // define properties that can be used during resource processing
+    inputs.property "modVersion", project.version
+    inputs.property "shortName", project.archivesBaseName
+    inputs.property "full", project.full_name
+    inputs.property "mcVersion", project.minecraft_version
+
+    // this will replace the property "${modVersion}" in your mcmod.info
+    // with the version you've defined in your gradle.properties
+    filesMatching("mcmod.info") {
+        expand "modVersion": project.version,
+                "shortName": project.archivesBaseName,
+                "fullName": project.full_name,
+                "mcVersion": project.minecraft_version
+    }
+}
+
+tasks.withType(JavaCompile) {
+    // ensure that the encoding is set to UTF-8, no matter what the system default is
+    // this fixes some edge cases with special characters not displaying correctly
+    // see http://yodaconditions.net/blog/fix-for-java-file-encoding-problems-with-gradle.html
+    // If Javadoc is generated, this must be specified in that task too.
+    options.encoding = "UTF-8"
+    options.release = 8
+}
+
+java {
+    // Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
+    // if it is present.
+    // If you remove this line, sources will not be generated.
+    withSourcesJar()
+}
+
+jar {
+    // add some additional metadata to the jar manifest
+    manifest {
+        attributes([
+                "Specification-Title"     : project.mod_id,
+                "Specification-Vendor"    : project.mod_author,
+                "Specification-Version"   : "1",
+                "Implementation-Title"    : project.name,
+                "Implementation-Version"  : version,
+                "Implementation-Vendor"   : project.mod_author,
+                "Implementation-Timestamp": new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
+        ])
+    }
+}
